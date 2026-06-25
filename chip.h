@@ -9,11 +9,6 @@
 #define DISPLAY_ROWS 32
 #define DISPLAY_COLS 64
 
-#define ADDR_MASK 0x0FFF
-#define X_MASK    0x0F00
-#define Y_MASK    0x00F0
-#define KK_MASK   0x00FF
-
 typedef struct {
 	uint16_t I;
 	uint16_t PC;

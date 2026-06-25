@@ -36,12 +36,11 @@ void cycle(Chip *chip) {
 	uint16_t opcode = (chip->memory[chip->PC] << 8) | (chip->memory[(chip->PC) + 1]);
 	chip->PC += 2;
 
-	/* nnn(or addr): lowest 12 bits of the instruction
-	 * n(or nibble): lowest 4 bits of the instruction
-	 * x: lower 4 bits of the high byte 
-	 * y: upper 4 bits of the low byte
-	 * kk(or byte): lowest 8 bits of the instruction
-	 */
+	uint16_t addr = opcode & 0x0FFF; // nnn/addr: lowest 12b of the instruction    
+	uint8_t n = opcode & 0x000F; // n/nibble: lowest 4b of the instruction
+	uint8_t kk = opcode & 0x00FF; // kk/byte: lowest 8b of the instruction
+	uint8_t x = (opcode & 0x0F00) >> 8; // x: lower 4b of the high byte
+	uint8_t y = (opcode & 0x00F0) >> 4; // y: upper 4b of the low byte
 
 	// Execute
 	switch(opcode & 0xF000) {
@@ -54,70 +53,80 @@ void cycle(Chip *chip) {
 			}
 			break;
 		case 0x1000: // 1nnn -> JUMP addr
-			chip->PC = opcode & ADDR_MASK; 	
+			chip->PC = addr; 	
 			break;
 		case 0x2000: // 2nnn -> CALL addr
 			chip->stack[chip->SP] = chip->PC;
 			chip->SP++;
-			chip->PC = opcode & ADDR_MASK;
+			chip->PC = addr;
 			break;
 		case 0x3000: {// 3xkk -> SE Vx, byte
-			int vx_i = (opcode & X_MASK) >> 8;
-			uint8_t vx = chip->V[vx_i];
-			
-			uint8_t kk = opcode & KK_MASK;
-			
+			uint8_t vx = chip->V[x];
 			if (vx == kk) chip->PC += 2;
 			
 			break;
 		}
 		case 0x4000: { // 4xkk -> SNE Vx, byte
-			int vx_i = (opcode & X_MASK) >> 8;
-			uint8_t vx = chip->V[vx_i];
-
-			uint8_t kk = opcode & KK_MASK;
-
+			uint8_t vx = chip->V[x];
 			if (vx != kk) chip->PC += 2;
 
 			break;
 		}
 		case 0x5000: { // 5xy0 -> SE Vx, Vy
-			int vx_i = (opcode & X_MASK) >> 8;
-			int vy_i = (opcode & Y_MASK) >> 4;
-
-			uint8_t vx = chip->V[vx_i];
-			uint8_t vy = chip->V[vy_i];
-
+			uint8_t vx = chip->V[x];
+			uint8_t vy = chip->V[y];
 			if(vx == vy) chip->PC += 2;
 
 			break;
 		}
-		case 0x6000: { // 6xkk -> LD Vx, byte
-			uint8_t vx_i = (opcode & X_MASK) >> 8;
-			uint8_t kk = opcode & KK_MASK;
-			
-			chip->V[vx_i] = kk;
-			
+		case 0x6000: // 6xkk -> LD Vx, byte
+			chip->V[x] = kk;
 			break;
-		}
-		case 0x7000: { // 7xkk -> ADD Vx, byte
-			uint8_t vx_i = (opcode & X_MASK) >> 8;
-			uint8_t kk = opcode & KK_MASK;
-
-			chip->V[vx_i] += kk;
-
+		case 0x7000: // 7xkk -> ADD Vx, byte
+			chip->V[x] += kk;
 			break;
-		}
 		case 0x8000:
+			switch(opcode & 0x000F) {
+				case 0x0000: // LD Vx, Vy
+					chip->V[x] = chip->V[y];
+					break;
+				case 0x0001: // OR Vx, Vy
+					chip->V[x] |= chip->V[y];
+					break;
+				case 0x0002: // AND Vx, Vy
+					chip->V[x] &= chip->V[y];
+					break;
+				case 0x0003: // XOR Vx, Vy
+					chip->V[x] ^= chip->V[y];
+					break;
+				case 0x0004: { // ADD Vx, Vy
 
-		case 0x9000:
+					// TODO: FAZER O MECANISMO DE CARRY
+					//chip->V[x] += chip->V[y];
+					if (chip->V[vx_i] & 0x
+							 // Como verificar se o resultado deu +8 bits?
 
-		case 0xA000:
-
-		case 0xB000:
-
+					break;
+				}
+				case 0x0005:
+			}
+			
+			break;
+		case 0x9000: { // 9xy0 -> SNE Vx, Vy
+			uint8_t vx = chip->V[x];
+			uint8_t vy = chip->V[y];
+			if (vx != vy) chip->PC += 2;
+			
+			break;
+		}
+		case 0xA000: // Annn -> LD I, addr
+			chip->I = addr;
+			break;
+		case 0xB000: // Bnnn -> JP V0, addr
+			chip->PC = addr + chip->V[0];
+			break;
 		case 0xC000:
-
+			
 		case 0xD000:
 
 		case 0xE000:
